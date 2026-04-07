@@ -1,0 +1,50 @@
+seed: 42
+
+train_csv: "./dataset/train/lumbar_diagnosis.csv"
+val_csv: "./dataset/valid/lumbar_diagnosis.csv"
+test_csv: "./dataset/test/lumbar_diagnosis.csv"
+
+train_image_dir: "./dataset/train/pair_crop"
+val_image_dir: "./dataset/valid/pair_crop"
+test_image_dir: "./dataset/test/pair_crop"
+
+train_feature_csv: "./dataset/train/pair_crop_features.csv"
+val_feature_csv: "./dataset/valid/pair_crop_features.csv"
+test_feature_csv: "./dataset/test/pair_crop_features.csv"
+
+save_dir: "./presence/experiments/exp_pair_crop_dnn_features_cv5"
+
+batch_size: 64
+num_workers: 4
+epochs: 50
+num_folds: 5
+
+feature_names:
+  - abs_dx_slip_px
+  - abs_dx_slip_ratio_wavg
+  - abs_left_edge_dx_px
+  - abs_left_edge_dx_ratio_wavg
+  - abs_right_edge_dx_px
+  - abs_right_edge_dx_ratio_wavg
+  - abs_left_slash_midline_sep_px
+  - abs_left_slash_midline_sep_ratio_wavg
+  - abs_right_slash_midline_sep_px
+  - abs_right_slash_midline_sep_ratio_wavg
+
+lr: 0.001
+weight_decay: 0.0001
+
+branch_hidden_dim: 16
+branch_out_dim: 8
+fusion_hidden_dim: 32
+fusion_out_dim: 16
+branch_dropout: 0.0
+fusion_dropout: 0.3
+
+exclude_s1_positive: true
+threshold: 0.5
+pos_weight: auto
+
+monitor_metric: "ap"
+early_stop_patience: 8
+early_stop_min_delta: 0.0

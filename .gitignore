@@ -1,0 +1,8 @@
+experiments/
+__pycache__/
+*.pyc
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.zip

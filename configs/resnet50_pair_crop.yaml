@@ -1,0 +1,61 @@
+seed: 42
+
+train_csv: "./dataset/train/lumbar_diagnosis.csv"
+val_csv: "./dataset/valid/lumbar_diagnosis.csv"
+test_csv: "./dataset/test/lumbar_diagnosis.csv"
+
+train_image_dir: "./dataset/train/pair_crop"
+val_image_dir: "./dataset/valid/pair_crop"
+test_image_dir: "./dataset/test/pair_crop"
+
+save_dir: "./presence/experiments/exp_pair_crop_cv5"
+
+batch_size: 16
+num_workers: 4
+epochs: 20
+num_folds: 5
+
+imagenet_pretrained: false
+lumbar_pretrained_ckpt: "./data/weights/global_resnet50_20250608_0110/model_global.pth"
+
+backbone_lr: 0.0001
+head_lr: 0.0005
+weight_decay: 0.0001
+dropout: 0.2
+attn_dim: 128
+
+exclude_s1_positive: false
+threshold: 0.5
+pos_weight: null
+
+monitor_metric: "balanced_acc"
+early_stop_patience: 7
+early_stop_min_delta: 0.0
+
+clahe_clip_limit: 4.0
+clahe_tile_grid_size: [8, 8]
+augmentation:
+  image_size: [224, 224]
+  rotation_deg: 5.0
+  brightness: 0.08
+  contrast: 0.10
+  use_horizontal_flip: false
+  horizontal_flip_prob: 0.5
+
+
+include_s1_pair_features: false
+include_s1_pairs_in_training: false
+feature_names:
+  - abs_dx_slip_px
+  - abs_dx_slip_ratio_wavg
+  - abs_left_edge_dx_px
+  - abs_left_edge_dx_ratio_wavg
+  - abs_right_edge_dx_px
+  - abs_right_edge_dx_ratio_wavg
+
+
+train_feature_csv: "./dataset/train/pair_crop_features.csv"
+val_feature_csv: "./dataset/valid/pair_crop_features.csv"
+
+num_feat_hidden_dim: 64
+fusion_hidden_dim: 512
