@@ -8,9 +8,9 @@ train_image_dir: "./dataset/train/lumbar_crop"
 val_image_dir: "./dataset/valid/lumbar_crop"
 test_image_dir: "./dataset/test/lumbar_crop"
 
-train_mask_dir: "./dataset/train/lumbar_crop_mask"
-val_mask_dir: "./dataset/valid/lumbar_crop_mask"
-test_mask_dir: "./dataset/test/lumbar_crop_mask"
+# train_mask_dir: "./dataset/train/lumbar_crop_mask"
+# val_mask_dir: "./dataset/valid/lumbar_crop_mask"
+# test_mask_dir: "./dataset/test/lumbar_crop_mask"
 
 save_dir: "./presence/experiments/exp_resnet50_basic_mask_cv5"
 
