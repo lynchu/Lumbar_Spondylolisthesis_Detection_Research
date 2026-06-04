@@ -1,0 +1,108 @@
+# ViT-B/16 OpenAI CLIP vision encoder experiment.
+# Uses openai/clip-vit-base-patch16 from Hugging Face Transformers.
+# The CLIP text encoder is NOT used; only CLIPVisionModel is used as image backbone.
+
+seed: 42
+train_csv: "./dataset_half_sacrum/train/lumbar_diagnosis.csv"
+val_csv: "./dataset_half_sacrum/valid/lumbar_diagnosis.csv"
+test_csv: "./dataset_half_sacrum/test/lumbar_diagnosis.csv"
+
+train_image_dir: "./dataset_half_sacrum/train/lumbar_crop"
+val_image_dir: "./dataset_half_sacrum/valid/lumbar_crop"
+test_image_dir: "./dataset_half_sacrum/test/lumbar_crop"
+
+use_mask_input: false
+train_mask_dir: "./dataset_half_sacrum/train/lumbar_crop_mask"
+val_mask_dir: "./dataset_half_sacrum/valid/lumbar_crop_mask"
+test_mask_dir: "./dataset_half_sacrum/test/lumbar_crop_mask"
+
+save_dir: ./presence/experiments/vit_base16_openai_clip_aug_noimplant_bs32_bce_balacc_cv5
+
+# OpenAI CLIP ViT-B/16 vision backbone.
+backbone_name: openai/clip-vit-base-patch16  # openai/clip-vit-large-patch14
+pretrained_source: transformers_clip_vision
+hf_hub_model_id: none
+transformers_model_id: openai/clip-vit-base-patch16  # openai/clip-vit-large-patch14
+imagenet_pretrained: true
+lumbar_pretrained_ckpt: ''
+
+batch_size: 32
+num_workers: 4
+epochs: 100
+num_folds: 5
+early_stop_patience: 20
+early_stop_min_delta: 0.0
+exclude_s1_positive: false
+
+monitor_metric: balanced_acc
+threshold: 0.5
+loss_name: bce
+label_smoothing: 0.0
+class_weight: null
+pos_weight: null
+
+# CLIP is pretrained on very different natural image-text data, so use conservative LR.
+backbone_lr: 5.0e-06
+head_lr: 1.0e-04
+weight_decay: 0.05
+scheduler_name: cosine
+plateau_factor: 0.5
+plateau_patience: 5
+min_lr: 1.0e-06
+
+dropout: 0.3
+hidden_dim: 128
+grad_clip_norm: 0.0
+freeze_bn_stats: false
+
+# Warm up only the classification head first, then fine-tune CLIP vision slowly.
+# For a pure linear-probe baseline, set freeze_backbone: true and freeze_backbone_epochs: 0.
+freeze_backbone: false
+freeze_backbone_epochs: 0
+
+use_repeat_map: true
+print_repeat_map_stats: true
+pair_repeat_map:
+  negative: 1
+  missing: 1
+  L5-S1: 3
+  L4-L5: 1
+  L3-L4: 3
+  L2-L3: 6
+  L1-L2: 20
+
+augmentation:
+  image_size: [512, 256]
+  # OpenAI CLIP ViT-B/16 expects 3-channel images.
+  # Your grayscale X-ray is converted/replicated to RGB by ForceOutputChannels.
+  input_channels: 3
+  use_imagenet_norm: false
+
+  # CLIP image processor normalization values commonly used for OpenAI CLIP.
+  # norm_mean: [0.48145466, 0.4578275, 0.40821073]
+  # norm_std: [0.26862954, 0.26130258, 0.27577711]
+
+  intensity_mode: none
+  percentile_low: 1.0
+  percentile_high: 99.0
+  clahe_clip_limit: 4.0
+  clahe_tile_grid_size: [8, 8]
+
+  use_random_brightness_contrast: false
+  brightness_limit: 0.08
+  contrast_limit: 0.08
+
+  use_random_gamma: false
+  gamma_range: [0.9, 1.1]
+  gamma_prob: 0.5
+
+  use_horizontal_flip: false
+  horizontal_flip_prob: 0.0
+
+implant_filter:
+  enabled: false
+  skip_unknown: true
+  include_values: [0]
+  exclude_values: [1, 2, 3]
+  require_column: true
+  verbose: true

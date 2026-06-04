@@ -1,0 +1,117 @@
+seed: 42
+
+train_csv: ./dataset_half_sacrum/train/lumbar_diagnosis.csv
+val_csv: ./dataset_half_sacrum/valid/lumbar_diagnosis.csv
+test_csv: ./dataset_half_sacrum/test/lumbar_diagnosis.csv
+
+train_image_dir: ./dataset_half_sacrum/train/lumbar_crop
+val_image_dir: ./dataset_half_sacrum/valid/lumbar_crop
+test_image_dir: ./dataset_half_sacrum/test/lumbar_crop
+
+use_mask_input: false
+train_mask_dir: ./dataset_half_sacrum/train/lumbar_crop_mask
+val_mask_dir: ./dataset_half_sacrum/valid/lumbar_crop_mask
+test_mask_dir: ./dataset_half_sacrum/test/lumbar_crop_mask
+
+save_dir: ./presence/experiments/vit_base16_timm_half_sacrum_pair_roi_aux_bs32_bce_balacc_cv5
+
+backbone_name: vit_base_patch16_224
+imagenet_pretrained: true
+lumbar_pretrained_ckpt: ''
+
+batch_size: 32
+num_workers: 4
+epochs: 100
+num_folds: 5
+early_stop_patience: 20
+early_stop_min_delta: 0.0
+exclude_s1_positive: false
+
+monitor_metric: balanced_acc
+threshold: 0.5
+loss_name: bce
+label_smoothing: 0.03
+
+class_weight: null
+pos_weight: null
+backbone_lr: 1.0e-05
+head_lr: 0.0001
+weight_decay: 0.05
+scheduler_name: cosine
+plateau_factor: 0.5
+plateau_patience: 5
+
+min_lr: 1.0e-06
+dropout: 0.2
+hidden_dim: 64
+grad_clip_norm: 0.0
+freeze_bn_stats: false
+
+use_repeat_map: true
+print_repeat_map_stats: true
+pair_repeat_map:
+  negative: 1
+  missing: 1
+  L5-S1: 3
+  L4-L5: 1
+  L3-L4: 3
+  L2-L3: 6
+  L1-L2: 20
+
+augmentation:
+  image_size:
+  - 512
+  - 256
+
+  use_imagenet_norm: false
+  intensity_mode: none
+  percentile_low: 1.0
+  percentile_high: 99.0
+  clahe_clip_limit: 4.0
+  clahe_tile_grid_size:
+  - 8
+  - 8
+
+  use_random_brightness_contrast: false
+  brightness_limit: 0.1
+  contrast_limit: 0.15
+
+  use_random_gamma: false
+  gamma_range:
+  - 0.9
+  - 1.1
+  gamma_prob: 0.5
+
+  use_horizontal_flip: false
+  horizontal_flip_prob: 0.0
+
+  pair_roi:
+    enabled: true
+    train_position_csv: ./dataset_half_sacrum/train/lumbar_crop_position.csv
+    valid_position_csv: ./dataset_half_sacrum/valid/lumbar_crop_position.csv
+    test_position_csv: ./dataset_half_sacrum/test/lumbar_crop_position.csv
+    patch_size: 16
+    margin_width_ratio: 0.15
+    margin_height_ratio: 0.15
+    min_patches_per_pair: 1
+
+implant_filter:
+  enabled: false
+  skip_unknown: true
+  include_values:
+  - 0
+  exclude_values:
+  - 1
+  - 2
+  - 3
+  require_column: true
+  verbose: true
+pair_aux:
+  enabled: true
+  num_pairs: 5
+  lambda_pair: 0.3
+  positive_only: true
+  hidden_dim: 64
+  pos_weight: null
+  use_roi_pooling: true
+  roi_fallback_to_global: true

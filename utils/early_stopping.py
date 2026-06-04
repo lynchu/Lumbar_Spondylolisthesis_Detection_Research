@@ -40,3 +40,21 @@ class EarlyStopping:
             self.should_stop = True
 
         return self.should_stop
+
+    def state_dict(self):
+        return {
+            "patience": self.patience,
+            "mode": self.mode,
+            "min_delta": self.min_delta,
+            "best_score": self.best_score,
+            "num_bad_epochs": self.num_bad_epochs,
+            "should_stop": self.should_stop,
+        }
+
+    def load_state_dict(self, state):
+        self.patience = state.get("patience", self.patience)
+        self.mode = state.get("mode", self.mode)
+        self.min_delta = state.get("min_delta", self.min_delta)
+        self.best_score = state.get("best_score", self.best_score)
+        self.num_bad_epochs = state.get("num_bad_epochs", self.num_bad_epochs)
+        self.should_stop = state.get("should_stop", self.should_stop)

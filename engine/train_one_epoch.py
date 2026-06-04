@@ -1,23 +1,55 @@
 import torch
+import torch.nn as nn
 from tqdm import tqdm
 
 
-def train_one_epoch(model, loader, optimizer, criterion, device):
+def freeze_bn_stats(module):
+    if isinstance(module, nn.BatchNorm2d):
+        module.eval()
+
+
+def train_one_epoch(model, loader, optimizer, criterion, device, loss_name="bce", grad_clip_norm=None, freeze_bn=False):
     model.train()
+    if freeze_bn and hasattr(model, "backbone"):
+        model.backbone.apply(freeze_bn_stats)
     running_loss = 0.0
 
     for batch in tqdm(loader, desc="train", leave=False):
         images = batch["images"].to(device)
         study_labels = batch["study_labels"].to(device)
 
-        optimizer.zero_grad()
+        masks = None
+        if "mask_tensors" in batch:
+            masks = batch["mask_tensors"].to(device)
+            if masks.ndim == 3:
+                masks = masks.unsqueeze(1)
 
-        outputs = model(images)
-        loss = criterion(outputs["study_logits"], study_labels)
+        if loss_name == "bce":
+            targets = study_labels.float()
+        elif loss_name == "ce":
+            targets = study_labels.long()
+        else:
+            raise ValueError(f"Unsupported loss_name: {loss_name}")
 
+        optimizer.zero_grad(set_to_none=True)
+
+        if getattr(model, "expects_roi_separately", False):
+            outputs = model(images, roi=masks)
+            batch_n = images.size(0)
+        else:
+            if masks is not None:
+                images = torch.cat([images, masks], dim=1)
+            outputs = model(images)
+            batch_n = images.size(0)
+
+        logits = outputs["study_logits"]
+        loss = criterion(logits, targets)
         loss.backward()
-        optimizer.step()
 
-        running_loss += loss.item() * images.size(0)
+        if grad_clip_norm is not None and grad_clip_norm > 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip_norm)
+
+        optimizer.step()
+        running_loss += loss.item() * batch_n
 
     return running_loss / len(loader.dataset)

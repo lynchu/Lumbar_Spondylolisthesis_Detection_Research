@@ -4,27 +4,41 @@ import torchvision
 
 
 class LumbarCropModel(nn.Module):
-    def __init__(self, backbone_pretrained: bool = False):
+    def __init__(
+        self,
+        backbone_pretrained: bool = False,
+        loss_name: str = "bce",
+        hidden_dim: int = 64,
+        dropout: float = 0.0,
+    ):
         super().__init__()
+        self.loss_name = loss_name.lower()
 
-        self.backbone = torchvision.models.resnet50(pretrained=backbone_pretrained)
+        weights = torchvision.models.ResNet50_Weights.IMAGENET1K_V2 if backbone_pretrained else None
+        self.backbone = torchvision.models.resnet50(weights=weights)
+        # self.backbone = torchvision.models.resnet50(pretrained=backbone_pretrained)
         fc_dim = self.backbone.fc.in_features
         self.backbone.fc = nn.Identity()
 
-        self.fc_combined1 = nn.Linear(fc_dim, 64)
+        self.fc_combined1 = nn.Linear(fc_dim, hidden_dim)
         self.activation = nn.LeakyReLU()
-        self.fc_combined2 = nn.Linear(64, 1)
+        self.dropout = nn.Dropout(dropout)
+
+        out_dim = 1 if self.loss_name == "bce" else 2
+        self.fc_combined2 = nn.Linear(hidden_dim, out_dim)
 
     def forward(self, images):
-        """
-        images: (B, 3, H, W)
-        """
         img_features = self.backbone(images)
-        combined = self.activation(self.fc_combined1(img_features))
-        output = self.fc_combined2(combined)
+        x = self.fc_combined1(img_features)
+        x = self.activation(x)
+        x = self.dropout(x)
+        logits = self.fc_combined2(x)
+
+        if self.loss_name == "bce":
+            logits = logits.squeeze(-1)
 
         return {
-            "study_logits": output.squeeze(-1),
+            "study_logits": logits,
             "pooled_features": img_features,
         }
 
@@ -51,10 +65,6 @@ class LumbarCropModel(nn.Module):
         print(f"[INFO] Loaded checkpoint from {ckpt_path}")
         print(f"[INFO] Missing keys: {len(missing)}")
         print(f"[INFO] Unexpected keys: {len(unexpected)}")
-        if missing:
-            print("[INFO] Example missing keys:", missing[:10])
-        if unexpected:
-            print("[INFO] Example unexpected keys:", unexpected[:10])
 
 
 class LumbarCropModelWithMask(nn.Module):
@@ -65,7 +75,7 @@ class LumbarCropModelWithMask(nn.Module):
         fc_dim = self.backbone.fc.in_features
         self.backbone.fc = nn.Identity()
 
-        self.fc_combined1 = nn.Linear(fc_dim, 64)
+        self.fc_combined1 = nn.Linear(fc_dim, 64) # d//2
         self.activation = nn.LeakyReLU()
         self.fc_combined2 = nn.Linear(64, 1)
 

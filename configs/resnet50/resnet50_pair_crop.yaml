@@ -1,0 +1,105 @@
+seed: 42
+
+# CSV labels are still case-level labels.
+train_csv: "./dataset_half_sacrum/train/lumbar_diagnosis.csv"
+val_csv: "./dataset_half_sacrum/valid/lumbar_diagnosis.csv"
+test_csv: "./dataset_half_sacrum/test/lumbar_diagnosis.csv"
+
+# Pair-crop image folders.
+# Expected filename format: {image_id}_{pair_name}.png, e.g. 000123_L4-L5.png
+train_image_dir: "./dataset_half_sacrum/train/pair_crop"
+val_image_dir: "./dataset_half_sacrum/valid/pair_crop"
+test_image_dir: "./dataset_half_sacrum/test/pair_crop"
+
+# Optional pair masks if you later create pair_crop_mask with matching filenames.
+use_pair_mask: false
+use_mask_input: false
+train_mask_dir: "./dataset_half_sacrum/train/pair_crop_mask"
+val_mask_dir: "./dataset_half_sacrum/valid/pair_crop_mask"
+test_mask_dir: "./dataset_half_sacrum/test/pair_crop_mask"
+
+save_dir: "./presence/experiments/resnet50_pairCrop_aug_b16_h256_bce_balacc_cv5"
+
+imagenet_pretrained: false
+lumbar_pretrained_ckpt: "./data/weights/global_resnet50_20250608_0110/model_global.pth"
+
+batch_size: 16
+num_workers: 4
+epochs: 100
+num_folds: 5
+early_stop_patience: 20
+early_stop_min_delta: 0.0
+
+# Do not exclude S1 by default because pair crop can include L5-S1.
+exclude_s1_positive: false
+
+# Main monitor target is case-level presence after max aggregation over pairs.
+monitor_metric: balanced_acc
+threshold: 0.5
+
+loss_name: "bce"
+pos_weight: null
+
+backbone_lr: 0.0001
+head_lr: 0.0005
+weight_decay: 0.0001
+scheduler_name: cosine
+plateau_factor: 0.5
+plateau_patience: 5
+min_lr: 1.0e-6
+
+dropout: 0.2
+hidden_dim: 64
+grad_clip_norm: 0.0
+freeze_bn_stats: false
+
+# Oversample only inside the training fold, after case-level CV splitting.
+# Positive pairs can be repeated by anatomical pair; negatives use "negative".
+use_repeat_map: true
+print_repeat_map_stats: true
+pair_repeat_map:
+  negative: 1
+  L5-S1: 3
+  L4-L5: 1
+  L3-L4: 3
+  L2-L3: 6
+  L1-L2: 20
+
+augmentation:
+  use_imagenet_norm: false
+  image_size: [512, 256]
+
+  # deterministic preprocessing: applied to train / valid / test
+  intensity_mode: "none"   # options: none, percentile, clahe, percentile_clahe
+  percentile_low: 1.0
+  percentile_high: 99.0
+  clahe_clip_limit: 2.0
+  clahe_tile_grid_size: [8, 8]
+
+  # training-only augmentation switch; no vertical flip.
+  enable_train_augmentation: false
+  use_random_rotation: false
+  rotation_degrees: 5.0
+  rotation_prob: 0.5
+  rotation_fill: 0
+  
+  use_horizontal_flip: false
+  horizontal_flip_prob: 0.5
+  use_vertical_flip: false
+
+  use_random_brightness_contrast: false
+  brightness_limit: 0.10
+  contrast_limit: 0.15
+
+  use_random_gamma: false
+  gamma_range: [0.9, 1.1]
+  gamma_prob: 0.5
+
+# Kept for compatibility. The uploaded PairCropDataset does not yet apply this filter.
+implant_filter:
+  enabled: false
+  skip_unknown: true
+  exclude_values: [1, 2, 3]
+  include_values: [0]
+  require_column: false
+  verbose: true
