@@ -1,0 +1,91 @@
+seed: 42
+train_csv: ./dataset_half_sacrum/train/lumbar_diagnosis.csv
+val_csv: ./dataset_half_sacrum/valid/lumbar_diagnosis.csv
+test_csv: ./dataset_half_sacrum/test/lumbar_diagnosis.csv
+train_image_dir: ./dataset_half_sacrum/train/lumbar_crop
+val_image_dir: ./dataset_half_sacrum/valid/lumbar_crop
+test_image_dir: ./dataset_half_sacrum/test/lumbar_crop
+use_mask_input: false
+train_mask_dir: ./dataset/train/lumbar_crop_mask
+val_mask_dir: ./dataset/valid/lumbar_crop_mask
+test_mask_dir: ./dataset/test/lumbar_crop_mask
+save_dir: ./presence/experiments/global_screening_stage2/resnet50_basic_lumbarCropHalfSacrum_aug_th04_w384_b32_bce_balacc_cv5
+imagenet_pretrained: false
+lumbar_pretrained_ckpt: ./data/weights/global_resnet50_20250608_0110/model_global.pth
+batch_size: 32
+num_workers: 2
+epochs: 50
+num_folds: 5
+early_stop_patience: 12
+early_stop_min_delta: 0.0
+exclude_s1_positive: false
+monitor_metric: balanced_acc
+threshold: 0.4
+loss_name: bce
+label_smoothing: 0.03
+class_weight: null
+pos_weight: null
+backbone_lr: 0.0001
+head_lr: 0.0005
+weight_decay: 0.0001
+scheduler_name: cosine
+plateau_factor: 0.5
+plateau_patience: 5
+min_lr: 1.0e-06
+dropout: 0.2
+hidden_dim: 64
+grad_clip_norm: 0.0
+freeze_bn_stats: false
+use_repeat_map: true
+print_repeat_map_stats: true
+pair_repeat_map:
+  negative: 1
+  missing: 1
+  L5-S1: 3
+  L4-L5: 1
+  L3-L4: 3
+  L2-L3: 6
+  L1-L2: 30
+clahe_clip_limit: 4.0
+clahe_tile_grid_size:
+- 8
+- 8
+augmentation:
+  use_imagenet_norm: false
+  image_size:
+  - 384
+  - 384
+  intensity_mode: none
+  percentile_low: 1.0
+  percentile_high: 99.0
+  clahe_clip_limit: 2.0
+  clahe_tile_grid_size:
+  - 8
+  - 8
+  enable_train_augmentation: false
+  use_random_rotation: false
+  rotation_degrees: 5.0
+  rotation_prob: 0.5
+  rotation_fill: 0
+  use_horizontal_flip: false
+  horizontal_flip_prob: 0.5
+  use_vertical_flip: false
+  use_random_brightness_contrast: false
+  brightness_limit: 0.1
+  contrast_limit: 0.15
+  use_random_gamma: false
+  gamma_range:
+  - 0.9
+  - 1.1
+  gamma_prob: 0.5
+implant_filter:
+  enabled: false
+  skip_unknown: true
+  exclude_values:
+  - 1
+  - 2
+  - 3
+  include_values:
+  - 0
+  require_column: false
+  verbose: true

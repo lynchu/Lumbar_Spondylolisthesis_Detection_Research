@@ -1,0 +1,31 @@
+Branch: basic_cv_ensemble
+ensemble_mode: probs
+loss_name: bce
+threshold: 0.3
+Overall metrics
+threshold: 0.3
+auroc: 0.8896538158929976
+ap: 0.863499853786721
+accuracy: 0.8314214463840399
+precision: 0.7694204685573366
+recall: 0.8051612903225807
+f1: 0.7868852459016393
+balanced_acc: 0.8265643849986879
+specificity: 0.8479674796747961
+sensitivity: 0.8051612903225795
+tn: 1043
+fp: 187
+fn: 151
+tp: 624
+
+Wrong-case summary
+Total wrong: 338
+FP: 187
+FN: 151
+
+Implant wrong-case summary
+implant                                            implant_description  total_cases_in_implant_category  wrong_cases_in_implant_category  wrong_case_distribution_count  wrong_case_distribution_ratio_among_all_wrong_cases  wrong_case_distribution_ratio_among_all_wrong_memberships  wrong_case_ratio_within_implant_category  case_distribution_ratio_among_all_cases  case_distribution_ratio_among_all_memberships  fp  fn  tp   tn  avg_y_prob_all_cases  avg_y_prob_wrong_cases
+      0                                                     no implant                             2005                              338                            338                                                  1.0                                                        1.0                                  0.168579                                      1.0                                            1.0 187 151 624 1043               0.33833                 0.36359
+      1                             TADs / Temporary Anchorage Devices                                0                                0                              0                                                  0.0                                                        0.0                                  0.000000                                      0.0                                            0.0   0   0   0    0                   NaN                     NaN
+      2            implant or blurry region between adjacent vertebrae                                0                                0                              0                                                  0.0                                                        0.0                                  0.000000                                      0.0                                            0.0   0   0   0    0                   NaN                     NaN
+      3 other implant not directly intersecting lumbar vertebra region                                0                                0                              0                                                  0.0                                                        0.0                                  0.000000                                      0.0                                            0.0   0   0   0    0                   NaN                     NaN

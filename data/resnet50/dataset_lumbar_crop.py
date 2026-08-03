@@ -455,6 +455,38 @@ def location_to_adjacent_pair(location):
     return f"{LUMBAR_LEVELS[b]}-{LUMBAR_LEVELS[a]}"
 
 
+def _resolve_geometry_feature_names(df: pd.DataFrame, feature_names=None) -> list[str]:
+    if feature_names is None or feature_names == "auto":
+        excluded = {"image_id", "base_image_id", "augmentation", "is_augmented"}
+        return [c for c in df.columns if c not in excluded and pd.api.types.is_numeric_dtype(df[c])]
+    return [str(c) for c in feature_names]
+
+
+def load_case_geometry_features(feature_csv: str | None, feature_names=None):
+    if not feature_csv:
+        return None, [], 0
+
+    df = pd.read_csv(feature_csv)
+    if "image_id" not in df.columns:
+        raise ValueError(f"Geometry feature CSV must contain image_id: {feature_csv}")
+
+    names = _resolve_geometry_feature_names(df, feature_names)
+    missing = [c for c in names if c not in df.columns]
+    if missing:
+        raise ValueError(f"Geometry feature CSV {feature_csv} is missing columns: {missing}")
+
+    df = df.copy()
+    df["image_id"] = df["image_id"].astype(str)
+    for c in names:
+        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0.0).astype(float)
+
+    features = {
+        row["image_id"]: torch.tensor(row[names].to_numpy(dtype=np.float32), dtype=torch.float32)
+        for _, row in df.iterrows()
+    }
+    return features, names, len(names)
+
+
 class LumbarCropDataset(Dataset):
     def __init__(
         self,
@@ -469,7 +501,14 @@ class LumbarCropDataset(Dataset):
         require_implant_column: bool = False,
         verbose_implant_filter: bool = True,
         skip_unknown_implant: bool = True,
+        geometry_feature_csv: str | None = None,
+        geometry_feature_names=None,
+        require_geometry: bool = False,
     ):
+        self.geometry_features, self.geometry_feature_names, self.geometry_dim = load_case_geometry_features(
+            geometry_feature_csv, geometry_feature_names
+        )
+        self.require_geometry = bool(require_geometry)
         self.text_df = pd.read_csv(text_csv_path)
         self.text_df = filter_dataframe_by_implant(
             self.text_df,
@@ -520,11 +559,19 @@ class LumbarCropDataset(Dataset):
         img = Image.open(os.path.join(self.image_dir, fname)).convert("RGB")
         img = self.transform(img)
 
-        return {
+        item = {
             "image_tensor": img,
             "study_label": torch.tensor(float(study_label), dtype=torch.float32),
             "image_id": image_id,
         }
+        if self.geometry_features is not None:
+            if image_id not in self.geometry_features:
+                if self.require_geometry:
+                    raise KeyError(f"Missing geometry features for image_id={image_id}")
+                item["geometry_features"] = torch.zeros(self.geometry_dim, dtype=torch.float32)
+            else:
+                item["geometry_features"] = self.geometry_features[image_id]
+        return item
 
 
 class LumbarCropDatasetWithMask(Dataset):
@@ -542,7 +589,14 @@ class LumbarCropDatasetWithMask(Dataset):
         require_implant_column: bool = False,
         verbose_implant_filter: bool = True,
         skip_unknown_implant: bool = True,
+        geometry_feature_csv: str | None = None,
+        geometry_feature_names=None,
+        require_geometry: bool = False,
     ):
+        self.geometry_features, self.geometry_feature_names, self.geometry_dim = load_case_geometry_features(
+            geometry_feature_csv, geometry_feature_names
+        )
+        self.require_geometry = bool(require_geometry)
         self.text_df = pd.read_csv(text_csv_path)
         self.text_df = filter_dataframe_by_implant(
             self.text_df,
@@ -645,11 +699,19 @@ class LumbarCropDatasetWithMask(Dataset):
         if transformed_img.shape[0] == 1:
             transformed_img = torch.cat((transformed_img, transformed_img, transformed_img), 0)
 
-        return {
+        item = {
             "image_tensor": transformed_img,
             "study_label": torch.tensor(float(study_label), dtype=torch.float32),
             "image_id": image_id,
         }
+        if self.geometry_features is not None:
+            if image_id not in self.geometry_features:
+                if self.require_geometry:
+                    raise KeyError(f"Missing geometry features for image_id={image_id}")
+                item["geometry_features"] = torch.zeros(self.geometry_dim, dtype=torch.float32)
+            else:
+                item["geometry_features"] = self.geometry_features[image_id]
+        return item
 
 
 class CombinedLumbarCropDataset(Dataset):
@@ -657,6 +719,15 @@ class CombinedLumbarCropDataset(Dataset):
         self.datasets = datasets
         self.index_map = []
         self.samples = []
+
+        self.geometry_dim = 0
+        self.geometry_feature_names = []
+        for ds in self.datasets:
+            if getattr(ds, "geometry_dim", 0):
+                if self.geometry_dim and self.geometry_dim != ds.geometry_dim:
+                    raise ValueError("All combined datasets must use the same geometry feature dimension.")
+                self.geometry_dim = ds.geometry_dim
+                self.geometry_feature_names = list(getattr(ds, "geometry_feature_names", []))
 
         for ds_idx, ds in enumerate(self.datasets):
             for local_idx, sample in enumerate(ds.samples):

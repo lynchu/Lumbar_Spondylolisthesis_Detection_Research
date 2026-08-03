@@ -30,7 +30,7 @@ from data.resnet50.dataset_lumbar_crop import (
 from data.resnet50.collate import lumbar_crop_collate_fn
 from engine.metrics import compute_binary_metrics
 
-from models.basic import LumbarCropModel
+from models.basic import LumbarCropModel, LumbarCropModelWithMask
 
 
 PAIR_NAMES = ["L5-S1", "L4-L5", "L3-L4", "L2-L3", "L1-L2"]
@@ -155,6 +155,30 @@ def grade_bucket(x):
         return "grade_2"
     else:
         return "grade_3_plus"
+
+
+def get_geometry_dataset_kwargs(cfg, split_name: str):
+    if not bool(cfg.get("use_geometry_features", False)):
+        return {}
+
+    split_aliases = {"valid": "val", "validation": "val"}
+    split_key = split_aliases.get(split_name, split_name)
+    csv_key = f"{split_key}_geometry_feature_csv"
+    feature_csv = cfg.get(csv_key, None)
+
+    geometry_csvs = cfg.get("geometry_feature_csv", None)
+    if feature_csv is None and isinstance(geometry_csvs, dict):
+        feature_csv = geometry_csvs.get(split_key) or geometry_csvs.get(split_name)
+
+    if not feature_csv:
+        raise ValueError(f"use_geometry_features=True but missing {csv_key} or geometry_feature_csv.{split_key}")
+
+    return {
+        "geometry_feature_csv": feature_csv,
+        "geometry_feature_names": cfg.get("geometry_feature_names", "auto"),
+        "require_geometry": bool(cfg.get("require_geometry_features", True)),
+    }
+
 
 
 def implant_description(implant):
@@ -579,6 +603,8 @@ def build_model(cfg, device):
             loss_name=cfg.get("loss_name", "bce"),
             hidden_dim=cfg.get("hidden_dim", 64),
             dropout=cfg.get("dropout", 0.0),
+            geometry_dim=cfg.get("_geometry_dim", cfg.get("geometry_dim", 0)),
+            geometry_hidden_dim=cfg.get("geometry_hidden_dim", 32),
         )
     return model.to(device)
 
@@ -601,10 +627,17 @@ def run_single_model(model, loader, device, dataset, temperature: float, loss_na
             image_ids.append(image_id)
         sample_ptr += batch_size
 
-        outputs = model(images)
+        geometry_features = batch.get("geometry_features")
+        if geometry_features is not None:
+            geometry_features = geometry_features.to(device)
+
+        if getattr(model, "expects_geometry", False):
+            outputs = model(images, geometry_features=geometry_features)
+        else:
+            outputs = model(images)
         raw_study_logits = outputs["study_logits"].detach().cpu().numpy()
 
-        if loss_name == "bce":
+        if loss_name in {"bce", "focal_bce", "focal"}:
             cal_study_logits = apply_temperature_np(raw_study_logits, temperature)   # shape (B,)
             study_probs = sigmoid_np(cal_study_logits)                               # shape (B,)
             scalar_logits = cal_study_logits                                         # shape (B,)
@@ -686,6 +719,7 @@ def main():
     cv_dir = Path(args.cv_dir)
     loss_name = cfg.get("loss_name", "bce").lower()
     implant_filter_kwargs = get_implant_filter_kwargs(cfg)
+    test_geometry_kwargs = get_geometry_dataset_kwargs(cfg, "test")
 
     cv_summary = {}
     cv_summary_path = cv_dir / "cv_summary.json"
@@ -709,6 +743,7 @@ def main():
             exclude_s1_positive=cfg.get("exclude_s1_positive", False),
             aug_cfg=cfg.get("augmentation", {}),
             **implant_filter_kwargs,
+            **test_geometry_kwargs,
         )
     else:
         test_dataset = LumbarCropDataset(
@@ -718,7 +753,15 @@ def main():
             exclude_s1_positive=cfg.get("exclude_s1_positive", False),
             aug_cfg=cfg.get("augmentation", {}),
             **implant_filter_kwargs,
+            **test_geometry_kwargs,
         )
+
+    if bool(cfg.get("use_geometry_features", False)):
+        if getattr(test_dataset, "geometry_dim", 0) <= 0:
+            raise RuntimeError("use_geometry_features=True but loaded test geometry_dim is 0.")
+        cfg["_geometry_dim"] = int(test_dataset.geometry_dim)
+        print(f"[INFO] geometry_dim={cfg['_geometry_dim']}")
+        print(f"[INFO] geometry_feature_names={getattr(test_dataset, 'geometry_feature_names', [])}")
 
     if len(test_dataset) == 0:
         raise RuntimeError("No test samples remain after image/S1/implant filtering.")

@@ -1,0 +1,178 @@
+{
+  "ensemble_mode": "probs",
+  "threshold": 0.3,
+  "used_folds": [
+    {
+      "fold": 1,
+      "ckpt": "presence/experiments/global_screening_stage2/resnet50_lumbarCropHalfSacrum_geo_th03_b32_bce_balacc_cv5/fold_1/best.pt",
+      "temperature": 1.0
+    },
+    {
+      "fold": 2,
+      "ckpt": "presence/experiments/global_screening_stage2/resnet50_lumbarCropHalfSacrum_geo_th03_b32_bce_balacc_cv5/fold_2/best.pt",
+      "temperature": 1.0
+    },
+    {
+      "fold": 3,
+      "ckpt": "presence/experiments/global_screening_stage2/resnet50_lumbarCropHalfSacrum_geo_th03_b32_bce_balacc_cv5/fold_3/best.pt",
+      "temperature": 1.0
+    },
+    {
+      "fold": 4,
+      "ckpt": "presence/experiments/global_screening_stage2/resnet50_lumbarCropHalfSacrum_geo_th03_b32_bce_balacc_cv5/fold_4/best.pt",
+      "temperature": 1.0
+    },
+    {
+      "fold": 5,
+      "ckpt": "presence/experiments/global_screening_stage2/resnet50_lumbarCropHalfSacrum_geo_th03_b32_bce_balacc_cv5/fold_5/best.pt",
+      "temperature": 1.0
+    }
+  ],
+  "cv_summary": {
+    "fold_metrics": [
+      {
+        "loss": 0.2936900337562012,
+        "auroc": 0.9740938215708858,
+        "ap": 0.9672328698390383,
+        "accuracy": 0.9223544145272385,
+        "precision": 0.88801261829653,
+        "recall": 0.913961038961039,
+        "f1": 0.9008,
+        "balanced_acc": 0.9207929557700187,
+        "specificity": 0.9276248725790001,
+        "sensitivity": 0.9139610389610374,
+        "tn": 910,
+        "fp": 71,
+        "fn": 53,
+        "tp": 563,
+        "epoch": 20,
+        "monitor_metric": "balanced_acc",
+        "monitor_value": 0.9207929557700187,
+        "fold": 1
+      },
+      {
+        "loss": 0.4230991539719725,
+        "auroc": 0.9779677509035307,
+        "ap": 0.9657984667538371,
+        "accuracy": 0.9304946775203506,
+        "precision": 0.9301533219761499,
+        "recall": 0.8863636363636364,
+        "f1": 0.9077306733167082,
+        "balanced_acc": 0.9222847743489933,
+        "specificity": 0.9582059123343517,
+        "sensitivity": 0.8863636363636349,
+        "tn": 940,
+        "fp": 41,
+        "fn": 70,
+        "tp": 546,
+        "epoch": 35,
+        "monitor_metric": "balanced_acc",
+        "monitor_value": 0.9222847743489933,
+        "fold": 2
+      },
+      {
+        "loss": 0.4203177835715325,
+        "auroc": 0.964684525464342,
+        "ap": 0.9537393081115052,
+        "accuracy": 0.9148403256105198,
+        "precision": 0.910958904109589,
+        "recall": 0.8636363636363636,
+        "f1": 0.8866666666666667,
+        "balanced_acc": 0.9053146140302091,
+        "specificity": 0.9469928644240561,
+        "sensitivity": 0.8636363636363622,
+        "tn": 929,
+        "fp": 52,
+        "fn": 84,
+        "tp": 532,
+        "epoch": 19,
+        "monitor_metric": "balanced_acc",
+        "monitor_value": 0.9053146140302091,
+        "fold": 3
+      },
+      {
+        "loss": 0.35683249446354065,
+        "auroc": 0.978310400211945,
+        "ap": 0.9733588012111238,
+        "accuracy": 0.9304946775203506,
+        "precision": 0.9285714285714286,
+        "recall": 0.8878048780487805,
+        "f1": 0.9077306733167082,
+        "balanced_acc": 0.9225175103074847,
+        "specificity": 0.9572301425661904,
+        "sensitivity": 0.8878048780487791,
+        "tn": 940,
+        "fp": 42,
+        "fn": 69,
+        "tp": 546,
+        "epoch": 40,
+        "monitor_metric": "balanced_acc",
+        "monitor_value": 0.9225175103074847,
+        "fold": 4
+      },
+      {
+        "loss": 0.32751012611695385,
+        "auroc": 0.9843864355140496,
+        "ap": 0.9781817987782558,
+        "accuracy": 0.9448966812773951,
+        "precision": 0.9504273504273504,
+        "recall": 0.9040650406504065,
+        "f1": 0.9266666666666666,
+        "balanced_acc": 0.9372667362111491,
+        "specificity": 0.9704684317718931,
+        "sensitivity": 0.904065040650405,
+        "tn": 953,
+        "fp": 29,
+        "fn": 59,
+        "tp": 556,
+        "epoch": 38,
+        "monitor_metric": "balanced_acc",
+        "monitor_value": 0.9372667362111491,
+        "fold": 5
+      }
+    ],
+    "summary": {
+      "loss": {
+        "mean": 0.36428991837604013,
+        "std": 0.05097128185186042
+      },
+      "auroc": {
+        "mean": 0.9758885867329505,
+        "std": 0.006498518430833065
+      },
+      "ap": {
+        "mean": 0.9676622489387521,
+        "std": 0.008253701816043065
+      },
+      "accuracy": {
+        "mean": 0.9286161552911709,
+        "std": 0.01001095498645527
+      },
+      "f1": {
+        "mean": 0.9059189359933499,
+        "std": 0.012914228527336398
+      },
+      "precision": {
+        "mean": 0.9216247246762096,
+        "std": 0.02094811848692346
+      },
+      "recall": {
+        "mean": 0.8911661915320451,
+        "std": 0.01719441633980978
+      },
+      "balanced_acc": {
+        "mean": 0.9216353181335709,
+        "std": 0.0101253764799589
+      },
+      "specificity": {
+        "mean": 0.9521044447350983,
+        "std": 0.014325602334490688
+      },
+      "sensitivity": {
+        "mean": 0.8911661915320439,
+        "std": 0.01719441633980975
+      }
+    }
+  },
+  "loss_name": "bce"
+}

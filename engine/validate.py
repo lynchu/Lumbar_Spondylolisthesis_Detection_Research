@@ -24,12 +24,16 @@ def validate(model, loader, criterion, device, loss_name="bce", threshold=0.5):
             if masks.ndim == 3:
                 masks = masks.unsqueeze(1)
 
-        if loss_name == "bce":
+        if str(loss_name).lower() in {"bce", "focal_bce", "focal"}:
             targets = study_labels.float()
-        elif loss_name == "ce":
+        elif str(loss_name).lower() == "ce":
             targets = study_labels.long()
         else:
             raise ValueError(f"Unsupported loss_name: {loss_name}")
+
+        geometry_features = batch.get("geometry_features")
+        if geometry_features is not None:
+            geometry_features = geometry_features.to(device)
 
         if getattr(model, "expects_roi_separately", False):
             outputs = model(images, roi=masks)
@@ -37,13 +41,16 @@ def validate(model, loader, criterion, device, loss_name="bce", threshold=0.5):
         else:
             if masks is not None:
                 images = torch.cat([images, masks], dim=1)
-            outputs = model(images)
+            if getattr(model, "expects_geometry", False):
+                outputs = model(images, geometry_features=geometry_features)
+            else:
+                outputs = model(images)
             batch_n = images.size(0)
 
         logits = outputs["study_logits"]
         loss = criterion(logits, targets)
 
-        if loss_name == "bce":
+        if str(loss_name).lower() in {"bce", "focal_bce", "focal"}:
             probs = torch.sigmoid(logits)
         else:
             probs = torch.softmax(logits, dim=1)[:, 1]

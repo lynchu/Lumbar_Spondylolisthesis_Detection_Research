@@ -1,0 +1,5 @@
+implant,implant_description,total_cases_in_implant_category,wrong_cases_in_implant_category,wrong_case_distribution_count,wrong_case_distribution_ratio_among_all_wrong_cases,wrong_case_distribution_ratio_among_all_wrong_memberships,wrong_case_ratio_within_implant_category,case_distribution_ratio_among_all_cases,case_distribution_ratio_among_all_memberships,fp,fn,tp,tn,avg_y_prob_all_cases,avg_y_prob_wrong_cases
+0,no implant,2005,338,338,1.0,1.0,0.1685785536159601,1.0,1.0,187,151,624,1043,0.33832988900428934,0.3635895776568767
+1,TADs / Temporary Anchorage Devices,0,0,0,0.0,0.0,0.0,0.0,0.0,0,0,0,0,,
+2,implant or blurry region between adjacent vertebrae,0,0,0,0.0,0.0,0.0,0.0,0.0,0,0,0,0,,
+3,other implant not directly intersecting lumbar vertebra region,0,0,0,0.0,0.0,0.0,0.0,0.0,0,0,0,0,,

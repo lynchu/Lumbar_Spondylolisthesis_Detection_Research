@@ -1,0 +1,80 @@
+seed: 42
+
+train_csv: ./dataset_half_sacrum/train/lumbar_diagnosis.csv
+val_csv: ./dataset_half_sacrum/valid/lumbar_diagnosis.csv
+test_csv: ./dataset_half_sacrum/test/lumbar_diagnosis.csv
+
+train_pair_image_dir: ./dataset_half_sacrum/train/pair_crop
+val_pair_image_dir: ./dataset_half_sacrum/valid/pair_crop
+test_pair_image_dir: ./dataset_half_sacrum/test/pair_crop
+
+train_feature_csv: ./dataset_half_sacrum/train/pair_crop_features.csv
+val_feature_csv: ./dataset_half_sacrum/valid/pair_crop_features.csv
+test_feature_csv: ./dataset_half_sacrum/test/pair_crop_features.csv
+
+save_dir: ./presence/experiments/local_pair_diagnostic/resnet50_local_pair_slip_aux_balacc_half_sacrum_cv5_th03
+
+require_all_pairs: true
+exclude_slip_outliers: true
+slip_column: estimated_slip_percentage
+slip_raw_column: estimated_slip_percentage_raw
+slip_outlier_column: estimated_slip_percentage_outlier
+
+# Stage 2B: location + slip auxiliary training. No angle-related features; ordinal loss disabled.
+geometry_feature_names:
+  - estimated_slip_percentage
+  - estimated_slip_percentage_outlier
+  - abs_dx_slip_px
+  - abs_dx_slip_ratio_wavg
+  - abs_left_edge_dx_px
+  - abs_left_edge_dx_ratio_wavg
+  - abs_right_edge_dx_px
+  - abs_right_edge_dx_ratio_wavg
+  - dx_slip_px
+  - left_edge_dx_px
+  - right_edge_dx_px
+  - dy_slip_px
+  - abs_dy_slip_px
+  - pair_interface_width
+  - pair_reference_width
+
+backbone_name: resnet50
+imagenet_pretrained: false
+local_backbone_ckpt: "./data/weights/global_resnet50_20250608_0110/model_global.pth"
+token_dim: 256
+geo_hidden_dim: 64
+transformer_layers: 2
+transformer_heads: 4
+dropout: 0.2
+
+num_folds: 5
+group_cv_by_base_image_id: false
+epochs: 20
+batch_size: 8
+num_workers: 4
+early_stop_patience: 5
+early_stop_min_delta: 0.0
+monitor_metric: case_mil_balanced_acc
+threshold: 0.3
+
+use_per_level_pos_weight: true
+use_case_pos_weight: true
+loss_weights:
+  location: 1.0
+  slip: 0.5
+  ordinal: 0.0
+  pair_mil: 0.1
+slip_smooth_l1_beta: 5.0
+
+backbone_lr: 5.0e-5
+head_lr: 1.5e-4
+weight_decay: 5.0e-4
+scheduler_name: cosine
+min_lr: 1.0e-6
+grad_clip_norm: 1.0
+
+augmentation:
+  image_size: [256, 256]
+  use_horizontal_flip: false
+  enable_train_augmentation: false
+  intensity_mode: none

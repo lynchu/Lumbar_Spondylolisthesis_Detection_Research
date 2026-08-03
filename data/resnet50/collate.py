@@ -50,4 +50,8 @@ def lumbar_crop_collate_fn(batch):
         masks = torch.stack([x["mask_tensor"] for x in batch], dim=0)
         out["mask_tensors"] = masks
 
+    if "geometry_features" in batch[0]:
+        geometry_features = torch.stack([x["geometry_features"] for x in batch], dim=0)
+        out["geometry_features"] = geometry_features
+
     return out

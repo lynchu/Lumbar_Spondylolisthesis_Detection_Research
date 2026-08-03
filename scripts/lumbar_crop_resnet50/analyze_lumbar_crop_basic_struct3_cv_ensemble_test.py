@@ -606,7 +606,7 @@ def run_single_model(model, loader, device, dataset, temperature: float, loss_na
         outputs = model(images)
         raw_study_logits = outputs["study_logits"].detach().cpu().numpy()
 
-        if loss_name == "bce":
+        if loss_name in {"bce", "focal_bce", "focal"}:
             cal_study_logits = apply_temperature_np(raw_study_logits, temperature)   # shape (B,)
             study_probs = sigmoid_np(cal_study_logits)                               # shape (B,)
             scalar_logits = cal_study_logits                                         # shape (B,)

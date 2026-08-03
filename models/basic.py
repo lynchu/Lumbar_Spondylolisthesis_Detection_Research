@@ -3,6 +3,10 @@ import torch.nn as nn
 import torchvision
 
 
+def is_binary_loss(loss_name: str) -> bool:
+    return str(loss_name).lower() in {"bce", "focal_bce", "focal"}
+
+
 class LumbarCropModel(nn.Module):
     def __init__(
         self,
@@ -10,9 +14,13 @@ class LumbarCropModel(nn.Module):
         loss_name: str = "bce",
         hidden_dim: int = 64,
         dropout: float = 0.0,
+        geometry_dim: int = 0,
+        geometry_hidden_dim: int = 32,
     ):
         super().__init__()
         self.loss_name = loss_name.lower()
+        self.geometry_dim = int(geometry_dim or 0)
+        self.expects_geometry = self.geometry_dim > 0
 
         weights = torchvision.models.ResNet50_Weights.IMAGENET1K_V2 if backbone_pretrained else None
         self.backbone = torchvision.models.resnet50(weights=weights)
@@ -20,21 +28,44 @@ class LumbarCropModel(nn.Module):
         fc_dim = self.backbone.fc.in_features
         self.backbone.fc = nn.Identity()
 
+        if self.expects_geometry:
+            geometry_hidden_dim = int(geometry_hidden_dim)
+            self.geometry_mlp = nn.Sequential(
+                nn.LayerNorm(self.geometry_dim),
+                nn.Linear(self.geometry_dim, geometry_hidden_dim),
+                nn.LeakyReLU(),
+                nn.Dropout(dropout),
+                nn.Linear(geometry_hidden_dim, geometry_hidden_dim),
+                nn.LeakyReLU(),
+            )
+            fc_dim = fc_dim + geometry_hidden_dim
+        else:
+            self.geometry_mlp = None
+
         self.fc_combined1 = nn.Linear(fc_dim, hidden_dim)
         self.activation = nn.LeakyReLU()
         self.dropout = nn.Dropout(dropout)
 
-        out_dim = 1 if self.loss_name == "bce" else 2
+        out_dim = 1 if is_binary_loss(self.loss_name) else 2
         self.fc_combined2 = nn.Linear(hidden_dim, out_dim)
 
-    def forward(self, images):
+    def forward(self, images, geometry_features=None):
         img_features = self.backbone(images)
-        x = self.fc_combined1(img_features)
+        if self.expects_geometry:
+            if geometry_features is None:
+                raise ValueError("LumbarCropModel was configured with geometry_dim > 0 but no geometry_features were provided.")
+            geometry_features = geometry_features.to(dtype=img_features.dtype)
+            geo_features = self.geometry_mlp(geometry_features)
+            x = torch.cat([img_features, geo_features], dim=1)
+        else:
+            x = img_features
+
+        x = self.fc_combined1(x)
         x = self.activation(x)
         x = self.dropout(x)
         logits = self.fc_combined2(x)
 
-        if self.loss_name == "bce":
+        if is_binary_loss(self.loss_name):
             logits = logits.squeeze(-1)
 
         return {

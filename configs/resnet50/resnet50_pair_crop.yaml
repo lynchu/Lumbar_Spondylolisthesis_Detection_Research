@@ -23,11 +23,11 @@ save_dir: "./presence/experiments/resnet50_pairCrop_aug_b16_h256_bce_balacc_cv5"
 imagenet_pretrained: false
 lumbar_pretrained_ckpt: "./data/weights/global_resnet50_20250608_0110/model_global.pth"
 
-batch_size: 16
+batch_size: 32
 num_workers: 4
 epochs: 100
 num_folds: 5
-early_stop_patience: 20
+early_stop_patience: 12
 early_stop_min_delta: 0.0
 
 # Do not exclude S1 by default because pair crop can include L5-S1.
@@ -59,11 +59,11 @@ use_repeat_map: true
 print_repeat_map_stats: true
 pair_repeat_map:
   negative: 1
-  L5-S1: 3
-  L4-L5: 1
+  L1-L2: 15
+  L2-L3: 5
   L3-L4: 3
-  L2-L3: 6
-  L1-L2: 20
+  L4-L5: 2
+  L5-S1: 4
 
 augmentation:
   use_imagenet_norm: false

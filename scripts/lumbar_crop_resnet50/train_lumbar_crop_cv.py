@@ -188,6 +188,29 @@ def get_implant_filter_kwargs(cfg):
     }
 
 
+def get_geometry_dataset_kwargs(cfg, split_name: str):
+    if not bool(cfg.get("use_geometry_features", False)):
+        return {}
+
+    split_aliases = {"valid": "val", "validation": "val"}
+    split_key = split_aliases.get(split_name, split_name)
+    csv_key = f"{split_key}_geometry_feature_csv"
+    feature_csv = cfg.get(csv_key, None)
+
+    geometry_csvs = cfg.get("geometry_feature_csv", None)
+    if feature_csv is None and isinstance(geometry_csvs, dict):
+        feature_csv = geometry_csvs.get(split_key) or geometry_csvs.get(split_name)
+
+    if not feature_csv:
+        raise ValueError(f"use_geometry_features=True but missing {csv_key} or geometry_feature_csv.{split_key}")
+
+    return {
+        "geometry_feature_csv": feature_csv,
+        "geometry_feature_names": cfg.get("geometry_feature_names", "auto"),
+        "require_geometry": bool(cfg.get("require_geometry_features", True)),
+    }
+
+
 class OversampledSubset(Dataset):
     """
     Wrap a base dataset + original indices, then duplicate only the selected
@@ -241,6 +264,8 @@ def build_model(cfg, device):
         loss_name=cfg.get("loss_name", "bce"),
         hidden_dim=cfg.get("hidden_dim", 64),
         dropout=cfg.get("dropout", 0.0),
+        geometry_dim=cfg.get("_geometry_dim", cfg.get("geometry_dim", 0)),
+        geometry_hidden_dim=cfg.get("geometry_hidden_dim", 32),
     )
     # model = LumbarCropModelWithMask(
     #     backbone_pretrained=cfg.get("imagenet_pretrained", False),
@@ -252,14 +277,39 @@ def build_model(cfg, device):
     return model.to(device)
 
 
-def build_criterion(cfg, device):
+def resolve_pos_weight(cfg, labels=None):
+    value = cfg.get("pos_weight", None)
+    if value is None:
+        return None
+    if isinstance(value, str):
+        if value.lower() != "auto":
+            return float(value)
+        if labels is None:
+            raise ValueError("pos_weight='auto' requires training labels for the current fold.")
+        labels = np.asarray(labels).astype(int)
+        pos = int((labels == 1).sum())
+        neg = int((labels == 0).sum())
+        if pos <= 0:
+            raise ValueError("pos_weight='auto' cannot be computed because the training fold has no positive samples.")
+        return float(neg / max(pos, 1))
+    return float(value)
+
+
+def build_criterion(cfg, device, train_labels=None):
     loss_name = cfg.get("loss_name", "bce").lower()
 
-    if loss_name == "bce":
+    if loss_name in {"bce", "focal_bce", "focal"}:
+        pos_weight_value = resolve_pos_weight(cfg, labels=train_labels)
         pos_weight = None
-        if cfg.get("pos_weight", None) is not None:
-            pos_weight = torch.tensor([cfg["pos_weight"]], device=device, dtype=torch.float32)
-        return StudyClassificationLoss(loss_name="bce", pos_weight=pos_weight), loss_name
+        if pos_weight_value is not None:
+            pos_weight = torch.tensor([pos_weight_value], device=device, dtype=torch.float32)
+            print(f"[INFO] {loss_name} pos_weight={pos_weight_value:.4f}")
+        return StudyClassificationLoss(
+            loss_name=loss_name,
+            pos_weight=pos_weight,
+            focal_alpha=float(cfg.get("focal_alpha", 0.65)),
+            focal_gamma=float(cfg.get("focal_gamma", 2.0)),
+        ), loss_name
 
     if loss_name == "ce":
         class_weight = None
@@ -362,6 +412,8 @@ def main():
     # Future ablations can enable implant_filter in the config without editing code.
     use_lumbar_mask = bool(cfg.get("use_lumbar_mask", cfg.get("use_mask_input", False)))
     implant_filter_kwargs = get_implant_filter_kwargs(cfg)
+    train_geometry_kwargs = get_geometry_dataset_kwargs(cfg, "train")
+    val_geometry_kwargs = get_geometry_dataset_kwargs(cfg, "val")
 
     if use_lumbar_mask:
         # LumbarCropDatasetWithMask uses the mask to crop/filter the RGB image and
@@ -380,6 +432,7 @@ def main():
             exclude_s1_positive=cfg.get("exclude_s1_positive", True),
             aug_cfg=cfg.get("augmentation", {}),
             **implant_filter_kwargs,
+            **train_geometry_kwargs,
         )
         val_dataset = LumbarCropDatasetWithMask(
             text_csv_path=cfg["val_csv"],
@@ -389,6 +442,7 @@ def main():
             exclude_s1_positive=cfg.get("exclude_s1_positive", True),
             aug_cfg=cfg.get("augmentation", {}),
             **implant_filter_kwargs,
+            **val_geometry_kwargs,
         )
     else:
         train_dataset = LumbarCropDataset(
@@ -398,6 +452,7 @@ def main():
             exclude_s1_positive=cfg.get("exclude_s1_positive", True),
             aug_cfg=cfg.get("augmentation", {}),
             **implant_filter_kwargs,
+            **train_geometry_kwargs,
         )
         val_dataset = LumbarCropDataset(
             text_csv_path=cfg["val_csv"],
@@ -406,6 +461,7 @@ def main():
             exclude_s1_positive=cfg.get("exclude_s1_positive", True),
             aug_cfg=cfg.get("augmentation", {}),
             **implant_filter_kwargs,
+            **val_geometry_kwargs,
         )
 
     print(f"[INFO] use_lumbar_mask={use_lumbar_mask}")
@@ -424,6 +480,12 @@ def main():
 
 
     full_dataset = CombinedLumbarCropDataset([train_dataset, val_dataset])
+    if bool(cfg.get("use_geometry_features", False)):
+        if getattr(full_dataset, "geometry_dim", 0) <= 0:
+            raise RuntimeError("use_geometry_features=True but loaded geometry_dim is 0.")
+        cfg["_geometry_dim"] = int(full_dataset.geometry_dim)
+        print(f"[INFO] geometry_dim={cfg['_geometry_dim']}")
+        print(f"[INFO] geometry_feature_names={getattr(full_dataset, 'geometry_feature_names', [])}")
     labels = get_labels_from_dataset(full_dataset)
 
     if len(full_dataset) == 0:
@@ -508,7 +570,8 @@ def main():
         )
 
         model = build_model(cfg, device)
-        criterion, loss_name = build_criterion(cfg, device)
+        train_labels_for_loss = np.array([int(full_dataset.samples[i][1]) for i in train_idx])
+        criterion, loss_name = build_criterion(cfg, device, train_labels=train_labels_for_loss)
         optimizer = build_optimizer(
             model,
             backbone_lr=cfg.get("backbone_lr", 1e-4),
@@ -563,11 +626,11 @@ def main():
                 criterion,
                 device,
                 loss_name=loss_name,
-                # grad_clip_norm=cfg.get("grad_clip_norm", None),
-                # freeze_bn=(
-                #     cfg.get("freeze_bn_stats", False)
-                #     and (cfg.get("imagenet_pretrained", False) or bool(cfg.get("lumbar_pretrained_ckpt", "")))
-                # ),
+                grad_clip_norm=cfg.get("grad_clip_norm", None),
+                freeze_bn=(
+                    cfg.get("freeze_bn_stats", False)
+                    and (cfg.get("imagenet_pretrained", False) or bool(cfg.get("lumbar_pretrained_ckpt", "")))
+                ),
             )
 
             val_metrics = validate(
